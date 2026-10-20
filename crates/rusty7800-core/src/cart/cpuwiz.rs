@@ -7,7 +7,7 @@
 //! (`(data & 0x1F) & mask`), same RAM scheme. The P450_VB flavor adds a
 //! POKEY@`$0450` window (composed in `p450.rs`).
 
-use super::{bank_mask, Cart, CartBus};
+use super::{bank_mask, bidx, Cart, CartBus};
 
 /// Shared Versa/Mega state (`m_bank` + `m_ram_bank`, both zero at reset).
 #[derive(Clone, Debug)]
@@ -33,12 +33,13 @@ impl VersaImage {
     }
 
     pub fn read(&self, off: usize) -> u8 {
+        let (rom, bank, mask) = (&self.rom, self.bank as i64, self.mask as i64);
         if off < 0x4000 {
             self.ram[off + (self.ram_bank as usize) * 0x4000]
         } else if off < 0x8000 {
-            self.rom[(off & 0x3FFF) + (self.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            self.rom[(off & 0x3FFF) + (self.mask as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + mask * 0x4000)
         }
     }
 

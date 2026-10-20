@@ -12,7 +12,7 @@
 //! that would otherwise live there is unreadable in that window. The
 //! `sg_pokey_visibility` test pins this outcome.
 
-use super::{bank_mask, base_rom, Cart, CartBus};
+use super::{bank_mask, base_rom, bidx, Cart, CartBus};
 
 /// Shared ROM image + bank state (`m_rom`/`m_bank`/`m_bank_mask`).
 #[derive(Clone, Debug)]
@@ -155,13 +155,13 @@ impl SuperGame {
 impl Cart for SuperGame {
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let rom = &self.img.rom;
+        let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
         if off < 0x4000 {
-            rom[(off & 0x3FFF) + ((self.img.mask - 1) as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + (mask - 1) * 0x4000)
         } else if off < 0x8000 {
-            rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            rom[(off & 0x3FFF) + (self.img.mask as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + mask * 0x4000)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -191,13 +191,13 @@ impl SuperGamePokey {
 impl Cart for SuperGamePokey {
     fn read_40xx(&mut self, addr: u16, _maria: bool, bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let rom = &self.img.rom;
+        let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
         if off < 0x4000 {
             bus.pokey_read(0x4000, (off & 0x0F) as u8)
         } else if off < 0x8000 {
-            rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            rom[(off & 0x3FFF) + (self.img.mask as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + mask * 0x4000)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, bus: &mut dyn CartBus) {
@@ -234,12 +234,13 @@ impl SuperGameRam {
 impl Cart for SuperGameRam {
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
+        let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
         if off < 0x4000 {
             self.ram[off]
         } else if off < 0x8000 {
-            self.img.rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            self.img.rom[(off & 0x3FFF) + (self.img.mask as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + mask * 0x4000)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -272,13 +273,13 @@ impl SuperGame9 {
 impl Cart for SuperGame9 {
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let rom = &self.img.rom;
+        let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
         if off < 0x4000 {
-            rom[off & 0x3FFF]
+            bidx(rom, (off & 0x3FFF) as i64)
         } else if off < 0x8000 {
-            rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            rom[(off & 0x3FFF) + ((self.img.mask + 1) as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + (mask + 1) * 0x4000)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -311,10 +312,11 @@ impl Absolute {
 impl Cart for Absolute {
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
+        let (rom, bank) = (&self.img.rom, self.img.bank as i64);
         if off < 0x4000 {
-            self.img.rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000)
         } else {
-            self.img.rom[off - 0x4000 + 0x8000]
+            bidx(rom, off as i64 - 0x4000 + 0x8000)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -349,15 +351,15 @@ impl Activision {
 impl Cart for Activision {
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let rom = &self.img.rom;
-        let a = off & 0x1FFF;
+        let (rom, bank) = (&self.img.rom, self.img.bank as i64);
+        let a = (off & 0x1FFF) as i64;
         match off & 0xE000 {
-            0x0000 => rom[a + 0x1A000],
-            0x2000 => rom[a + 0x18000],
-            0x4000 => rom[a + 0x1E000],
-            0x6000 => rom[a + (self.img.bank as usize) * 0x4000],
-            0x8000 => rom[a + (self.img.bank as usize) * 0x4000 + 0x2000],
-            _ => rom[a + 0x1C000],
+            0x0000 => bidx(rom, a + 0x1A000),
+            0x2000 => bidx(rom, a + 0x18000),
+            0x4000 => bidx(rom, a + 0x1E000),
+            0x6000 => bidx(rom, a + bank * 0x4000),
+            0x8000 => bidx(rom, a + bank * 0x4000 + 0x2000),
+            _ => bidx(rom, a + 0x1C000),
         }
     }
     fn write_40xx(&mut self, addr: u16, _data: u8, _bus: &mut dyn CartBus) {

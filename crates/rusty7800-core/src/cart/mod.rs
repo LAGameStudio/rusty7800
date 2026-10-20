@@ -270,3 +270,135 @@ pub mod hiscore;
 pub mod cpuwiz;
 pub mod p450;
 pub mod p800;
+
+/// A loaded cartridge image: the built cart plus header metadata.
+pub struct LoadedCart {
+    pub cart: Box<dyn Cart>,
+    /// Raw PCB id (`header::dispatch_type` result, pre-slot-key). `-1` for
+    /// headerless images (assumed flat).
+    pub pcb_id: i32,
+    /// Slot key the cart was built as.
+    pub slot_key: &'static str,
+    /// Parsed header (`None` for headerless images).
+    pub header: Option<header::A78Header>,
+    /// Quirk repairs applied to the header mapper.
+    pub quirks: Vec<header::Quirk>,
+    /// Non-fatal loader notes (SaveKey, XM-required, length clamp...).
+    pub notes: Vec<&'static str>,
+}
+
+/// Build a cart for a slot key with correctly-sized work RAM.
+/// `rom` is the image data (without the 128-byte header); `nvram_image`
+/// is optional battery history. Unknown keys fall back to flat.
+pub fn build_cart(slot_key: &str, rom: Vec<u8>, nvram_image: Option<&[u8]>) -> Box<dyn Cart> {
+    use bankset::{Bankset52k, BanksetBankram, BanksetRom, BanksetRomPok4000, BanksetSg, BanksetSgBankram};
+    use cpuwiz::{Mega, Versa};
+    use hiscore::Hiscore;
+    use p450::{Pokey450, VersaPokey};
+    use p800::Pokey800;
+    use rom::{Absolute, Activision, Flat, FlatPokey, MirrorRam, SuperGame, SuperGame9, SuperGamePokey, SuperGameRam};
+    use xm::Xm;
+    let ram = |n: usize| vec![0u8; n];
+    match slot_key {
+        "a78_pokey" => Box::new(FlatPokey::new(rom)),
+        "a78_sg" => Box::new(SuperGame::new(rom)),
+        "a78_sg_pokey" => Box::new(SuperGamePokey::new(rom)),
+        "a78_sg_ram" => Box::new(SuperGameRam::new(rom, ram(0x4000))),
+        "a78_sg9" => Box::new(SuperGame9::new(rom)),
+        "a78_mram" => Box::new(MirrorRam::new(rom, ram(0x4000))),
+        "a78_abs" => Box::new(Absolute::new(rom)),
+        "a78_act" => Box::new(Activision::new(rom)),
+        "a78_hsc" => Box::new(Hiscore::new(pad_to(rom, 0x1000), nvram_image)),
+        "a78_xm" => Box::new(Xm::new(ram(0x20000), vec![0u8; 0x1000], nvram_image)),
+        "a78_bankset" => Box::new(BanksetRom::new(rom)),
+        "a78_bankset_p4000" => Box::new(BanksetRomPok4000::new(rom)),
+        "a78_bankset_bankram" => Box::new(BanksetBankram::new(rom, ram(0x8000))),
+        "a78_bankset_p800" => Box::new(Pokey800::new(BanksetRom::new(rom))),
+        "a78_bankset_bankram_p800" => {
+            Box::new(Pokey800::new(BanksetBankram::new(rom, ram(0x8000))))
+        }
+        "a78_bankset_sg" => Box::new(BanksetSg::new(rom, false)),
+        "a78_bankset_sg_p800" => Box::new(Pokey800::new(BanksetSg::new(rom, true))),
+        "a78_bankset_sg_bankram" => Box::new(BanksetSgBankram::new(rom, ram(0x8000))),
+        "a78_bankset_sg_bankram_p800" => {
+            Box::new(Pokey800::new(BanksetSgBankram::new(rom, ram(0x8000))))
+        }
+        "a78_bankset_52k" => Box::new(Bankset52k::new(rom, false)),
+        "a78_bankset_52k_p4000" => Box::new(Bankset52k::new(rom, true)),
+        "a78_megacart" => Box::new(Mega::new(rom, ram(0x8000))),
+        "a78_versa" => Box::new(Versa::new(rom, ram(0x8000))),
+        "a78_p450_t0" => Box::new(Pokey450::new(Flat::new(rom))),
+        "a78_p450_t1" => Box::new(Pokey450::new(FlatPokey::new(rom))),
+        "a78_p450_t2" => Box::new(Pokey450::new(SuperGame::new(rom))),
+        "a78_p450_t6" => Box::new(Pokey450::new(SuperGameRam::new(rom, ram(0x4000)))),
+        "a78_p450_ta" => Box::new(Pokey450::new(SuperGame9::new(rom))),
+        "a78_p450_vb" => Box::new(VersaPokey::new(rom, ram(0x8000))),
+        "a78_p800_t0" => Box::new(Pokey800::new(Flat::new(rom))),
+        "a78_p800_t1" => Box::new(Pokey800::new(FlatPokey::new(rom))),
+        "a78_p800_t2" => Box::new(Pokey800::new(SuperGame::new(rom))),
+        "a78_p800_t6" => Box::new(Pokey800::new(SuperGameRam::new(rom, ram(0x4000)))),
+        "a78_p800_ta" => Box::new(Pokey800::new(SuperGame9::new(rom))),
+        _ => Box::new(Flat::new(rom)),
+    }
+}
+
+/// Banked-ROM indexing (`m_rom[...]` sites). The C++ uses signed `int`
+/// math throughout the bank formulas, so small/degenerate images index
+/// out of bounds there (undefined behavior — garbage or crashes). Here
+/// the same signed formula is evaluated in `i64` (which cannot overflow
+/// at these magnitudes) and wrapped within the image: every in-bounds
+/// access returns exactly what the C++ reads; out-of-bounds accesses
+/// mirror deterministically instead of panicking. Empty images read
+/// `0xFF`. Explicit open-bus windows keep their `0xFF` semantics and do
+/// NOT use this helper.
+pub fn bidx(rom: &[u8], idx: i64) -> u8 {
+    if rom.is_empty() {
+        0xFF
+    } else {
+        rom[idx.rem_euclid(rom.len() as i64) as usize]
+    }
+}
+
+/// Pad or truncate image data to an exact size (pads with `0xFF`, the
+/// erased-EPROM state, matching `ROMREGION_ERASEFF`).
+pub fn pad_to(mut data: Vec<u8>, size: usize) -> Vec<u8> {
+    data.resize(size, 0xFF);
+    data
+}
+
+/// Load a raw file dump. Headered `.a78` files go through magic check,
+/// dispatch, quirk repair, length clamp, and `call_load` RAM/NVRAM sizing.
+/// Headerless `.bin` files load whole as a flat cart. MAME rejects those,
+/// but the plan requires headerless detection, so accepting them as flat
+/// is a documented adaptation.
+pub fn load_image(file: &[u8]) -> Result<LoadedCart, header::HeaderError> {
+    if file.len() >= header::HEADER_LEN && file[1..10] == header::MAGIC[..] {
+        let head = header::parse_header(file)?;
+        let (mapper, quirks) = header::validate_header(head.mapper);
+        let rom_len = header::effective_rom_len(head.len, file.len());
+        let rom = file[header::HEADER_LEN..header::HEADER_LEN + rom_len].to_vec();
+        let pcb_id = header::dispatch_type(mapper, rom_len, file.len());
+        let slot_key = slot_key_for_type(pcb_id);
+        let mut notes = Vec::new();
+        if head.save == 2 {
+            notes.push("SaveKey NVRAM requested (unsupported upstream)");
+        }
+        if head.needs_xm {
+            notes.push("XM expansion required");
+        }
+        if rom_len != head.len as usize {
+            notes.push("header length clamped to file");
+        }
+        let cart = build_cart(slot_key, rom, None);
+        Ok(LoadedCart { cart, pcb_id, slot_key, header: Some(head), quirks, notes })
+    } else {
+        Ok(LoadedCart {
+            cart: build_cart("a78_rom", file.to_vec(), None),
+            pcb_id: -1,
+            slot_key: "a78_rom",
+            header: None,
+            quirks: Vec::new(),
+            notes: vec!["headerless image, assumed flat"],
+        })
+    }
+}

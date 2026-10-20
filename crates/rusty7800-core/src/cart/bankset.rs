@@ -12,7 +12,7 @@
 //! 52K variants add the `30xx` (`$3000–$3FFF`) ROM window installed by
 //! `machine_start`.
 
-use super::{bank_mask, Cart, CartBus};
+use super::{bank_mask, bidx, Cart, CartBus};
 
 /// Shared bankset image state.
 #[derive(Clone, Debug)]
@@ -58,8 +58,12 @@ impl BanksetRom {
         BanksetRom { img: BanksetImage::new(rom, Vec::new()) }
     }
 
+    /// `addrstart = 0xC000 - (rom_size / 2)`. Evaluated in unsigned 32-bit
+    /// like the C++: images larger than 96K wrap below zero, which makes
+    /// the whole window open bus upstream — reproduced here rather than
+    /// "fixed", so the port stays parity-true.
     fn window(&self) -> u32 {
-        0xC000 - self.img.rom.len() as u32 / 2
+        0xC000u32.wrapping_sub(self.img.rom.len() as u32 / 2)
     }
 }
 
@@ -70,10 +74,9 @@ impl Cart for BanksetRom {
         if off < start {
             0xFF
         } else if maria {
-            let i = (off - start) as usize + self.img.rom.len() / 2;
-            self.img.rom[i]
+            bidx(&self.img.rom, (off - start) as i64 + self.img.rom.len() as i64 / 2)
         } else {
-            self.img.rom[(off - start) as usize]
+            bidx(&self.img.rom, (off - start) as i64)
         }
     }
     fn reset(&mut self) {
@@ -134,24 +137,21 @@ impl BanksetSg {
 impl Cart for BanksetSg {
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let half = if maria { self.img.maria_half() } else { 0 };
-        let last = ((self.img.mask / 2) as usize) * 0x4000 + half;
+        let half = if maria { self.img.maria_half() as i64 } else { 0 };
+        let last = (self.img.mask as i64 / 2) * 0x4000 + half;
+        let (rom, bank) = (&self.img.rom, self.img.bank as i64);
         if off < 0x4000 {
             if self.low_open {
                 0xFF
             } else {
-                // Second-to-last bank of the viewer half. C++ spells it
-                // `offset + (mask/2)*0x4000 - 0x4000` (= `offset + last -
-                // 0x4000`); the subtraction is exact (last >= 0x4000
-                // whenever this window is reachable... for tiny ROMs the
-                // usize math would underflow, matching nothing sensible
-                // upstream either — banksets are >= 64K in practice).
-                self.img.rom[off + last - 0x4000]
+                // Second-to-last bank of the viewer half (`offset +
+                // (mask/2)*0x4000 - 0x4000` in C++ signed math).
+                bidx(rom, off as i64 + last - 0x4000)
             }
         } else if off < 0x8000 {
-            self.img.rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000 + half]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000 + half)
         } else {
-            self.img.rom[(off & 0x3FFF) + last]
+            bidx(rom, (off & 0x3FFF) as i64 + last)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -184,18 +184,19 @@ impl BanksetSgBankram {
 impl Cart for BanksetSgBankram {
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
-        let half = if maria { self.img.maria_half() } else { 0 };
+        let half = if maria { self.img.maria_half() as i64 } else { 0 };
+        let (rom, ram, bank) = (&self.img.rom, &self.img.ram, self.img.bank as i64);
         if off < 0x4000 {
             // Maria can only read, so the DMA flag picks Sally's 16K RAM
             // bank (`m_ram[offset]`) vs Maria's (`m_ram[offset + 0x4000]`).
             // (The ROM-half stride does NOT apply to RAM: fixed 0x4000.)
             let ram_half = if maria { 0x4000 } else { 0 };
-            self.img.ram[off + ram_half]
+            ram[off + ram_half]
         } else if off < 0x8000 {
-            self.img.rom[(off & 0x3FFF) + (self.img.bank as usize) * 0x4000 + half]
+            bidx(rom, (off & 0x3FFF) as i64 + bank * 0x4000 + half)
         } else {
-            let last = ((self.img.mask / 2) as usize) * 0x4000 + half;
-            self.img.rom[(off & 0x3FFF) + last]
+            let last = (self.img.mask as i64 / 2) * 0x4000 + half;
+            bidx(rom, (off & 0x3FFF) as i64 + last)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, _bus: &mut dyn CartBus) {
@@ -227,8 +228,9 @@ impl BanksetBankram {
         BanksetBankram { img: BanksetImage::new(rom, ram) }
     }
 
+    /// See `BanksetRom::window`: unsigned wrap preserved.
     fn window(&self) -> u32 {
-        0xC000 - self.img.rom.len() as u32 / 2
+        0xC000u32.wrapping_sub(self.img.rom.len() as u32 / 2)
     }
 }
 
@@ -243,9 +245,9 @@ impl Cart for BanksetBankram {
             if off < start {
                 0xFF
             } else if maria {
-                self.img.rom[off - start + self.img.rom.len() / 2]
+                bidx(&self.img.rom, (off - start) as i64 + self.img.rom.len() as i64 / 2)
             } else {
-                self.img.rom[off - start]
+                bidx(&self.img.rom, (off - start) as i64)
             }
         }
     }
@@ -282,17 +284,17 @@ impl Cart for Bankset52k {
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         if maria {
-            self.rom[off + 0x1000 + 0xD000]
+            bidx(&self.rom, off as i64 + 0x1000 + 0xD000)
         } else {
-            self.rom[off + 0x1000]
+            bidx(&self.rom, off as i64 + 0x1000)
         }
     }
     fn read_30xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x3000) as usize;
         if maria {
-            self.rom[off + 0xD000]
+            bidx(&self.rom, off as i64 + 0xD000)
         } else {
-            self.rom[off]
+            bidx(&self.rom, off as i64)
         }
     }
     fn write_40xx(&mut self, addr: u16, data: u8, bus: &mut dyn CartBus) {
