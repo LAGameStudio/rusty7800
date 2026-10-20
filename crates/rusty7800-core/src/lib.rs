@@ -11,6 +11,7 @@ pub mod palette;
 pub mod sally;
 pub mod maria;
 pub mod tia;
+pub mod tia_io;
 pub mod riot;
 pub mod pokey;
 pub mod ym2151;
