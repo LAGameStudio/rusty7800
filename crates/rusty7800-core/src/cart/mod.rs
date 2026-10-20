@@ -89,6 +89,84 @@ pub trait Cart {
         false
     }
     fn reset(&mut self);
+    /// Mutable state for save-states (Phase 8). ROM bytes are immutable
+    /// and travel with the loaded image; only bank registers, RAM,
+    /// NVRAM, and control registers are captured here. The machine checks
+    /// `slot_key` equality before `load_state`, so a blob always meets
+    /// its own cart type; length-mismatched fields are left untouched.
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::versioned()
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        let _ = s;
+    }
+    /// Live battery contents for NVRAM persistence (`state.nvram_image`);
+    /// `None` = no battery on this cart.
+    fn nvram_image(&self) -> Option<Vec<u8>> {
+        None
+    }
+    /// Restore battery contents (truncates/pads like `load_nvram`).
+    fn load_nvram(&mut self, image: &[u8]) {
+        let _ = image;
+    }
+    /// Bank/control registers for `state.cart` introspection.
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        Vec::new()
+    }
+}
+
+/// Save-state version tag (bump when the layout changes).
+pub const CART_STATE_VERSION: u32 = 1;
+
+/// Mutable cart state blob. `regs[0]` = primary bank (`m_bank`),
+/// `regs[1]` = secondary bank (`m_ram_bank`); `ctrl` carries small
+/// control-register files (XM `cntrl1`–`cntrl5`); `inner` recurses for
+/// passthrough wrappers (HSC/XM top-slot, POKEY mixins).
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct SavedCartState {
+    pub version: u32,
+    pub regs: [i32; 2],
+    pub ram: Vec<u8>,
+    pub nvram: Vec<u8>,
+    pub ctrl: Vec<u8>,
+    pub inner: Option<Box<SavedCartState>>,
+}
+
+impl SavedCartState {
+    pub fn versioned() -> Self {
+        SavedCartState { version: CART_STATE_VERSION, ..Default::default() }
+    }
+
+    pub fn with_bank(bank: i32) -> Self {
+        let mut s = Self::versioned();
+        s.regs[0] = bank;
+        s
+    }
+
+    pub fn with_bank_ram(bank: i32, ram_bank: i32, ram: &[u8]) -> Self {
+        let mut s = Self::versioned();
+        s.regs = [bank, ram_bank];
+        s.ram = ram.to_vec();
+        s
+    }
+
+    /// Restore helpers: registers apply unconditionally; bulk fields only
+    /// when lengths match the live image (guards corrupt snapshots).
+    pub fn apply_bank(&self, bank: &mut i32) {
+        *bank = self.regs[0];
+    }
+
+    pub fn apply_ram(&self, ram: &mut [u8]) {
+        if self.ram.len() == ram.len() {
+            ram.copy_from_slice(&self.ram);
+        }
+    }
+
+    pub fn apply_nvram(&self, nvram: &mut [u8]) {
+        if self.nvram.len() == nvram.len() {
+            nvram.copy_from_slice(&self.nvram);
+        }
+    }
 }
 
 /// Raw PCB ids from `a78_slot.h` (kept numeric: header dispatch does

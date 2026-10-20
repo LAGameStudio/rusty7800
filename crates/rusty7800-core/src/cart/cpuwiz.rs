@@ -7,7 +7,7 @@
 //! (`(data & 0x1F) & mask`), same RAM scheme. The P450_VB flavor adds a
 //! POKEY@`$0450` window (composed in `p450.rs`).
 
-use super::{bank_mask, bidx, Cart, CartBus};
+use super::{bank_mask, bidx, Cart, CartBus, SavedCartState};
 
 /// Shared Versa/Mega state (`m_bank` + `m_ram_bank`, both zero at reset).
 #[derive(Clone, Debug)]
@@ -66,6 +66,17 @@ impl Versa {
 }
 
 impl Cart for Versa {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, self.img.ram_bank, &self.img.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        self.img.ram_bank = s.regs[1];
+        s.apply_ram(&mut self.img.ram);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64), ("ram_bank", self.img.ram_bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         self.img.read(addr.wrapping_sub(0x4000) as usize)
     }
@@ -90,6 +101,17 @@ impl Mega {
 }
 
 impl Cart for Mega {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, self.img.ram_bank, &self.img.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        self.img.ram_bank = s.regs[1];
+        s.apply_ram(&mut self.img.ram);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64), ("ram_bank", self.img.ram_bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         self.img.read(addr.wrapping_sub(0x4000) as usize)
     }

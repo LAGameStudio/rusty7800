@@ -8,3 +8,7 @@ description = "Rusty7800 emulation core — Atari 7800 (port of A7800 5.2 MAME d
 [lib]
 name = "rusty7800_core"
 path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"

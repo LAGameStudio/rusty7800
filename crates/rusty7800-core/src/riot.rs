@@ -20,14 +20,14 @@ pub const PA7_FLAG: u8 = 0x40;
 /// Timer divisor shifts selected by offset bits 0–1 (reg_w timershift table).
 const TIMER_SHIFTS: [u32; 4] = [0, 3, 6, 10];
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 enum TimerState {
     Idle,
     Counting,
     Finishing,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Riot {
     pa_in: u8,
     pub pa_out: u8,

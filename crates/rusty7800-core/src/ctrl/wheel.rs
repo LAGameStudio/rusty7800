@@ -13,7 +13,7 @@ use crate::tia_io::TiaPort;
 pub const DRIVING_LOOKUP: [u8; 4] = [0x00, 0x02, 0x03, 0x01];
 
 /// Driving-wheel state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct DrivingWheel {
     /// Fire button (bit 0x20, active-low).
     pub button: bool,

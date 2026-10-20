@@ -31,7 +31,7 @@ pub const KEY_0: u8 = 10;
 pub const KEY_HASH: u8 = 11;
 
 /// Keypad state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Keypad {
     /// Pressed keys as a 12-bit matrix (bit `i` = key `i` held).
     pub keys: u16,

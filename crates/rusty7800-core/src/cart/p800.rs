@@ -7,7 +7,7 @@
 //! gate, unlike P450). Factored into [`Pokey800`], composed over the
 //! flat / flat+POKEY / SG / SG+RAM / SG9 / bankset bases.
 
-use super::{Cart, CartBus};
+use super::{Cart, CartBus, SavedCartState};
 
 /// Mixin: POKEY@`$0800` window over any base cart.
 #[derive(Clone, Debug)]
@@ -22,6 +22,25 @@ impl<C> Pokey800<C> {
 }
 
 impl<C: Cart> Cart for Pokey800<C> {
+    fn save_state(&self) -> SavedCartState {
+        let mut s = SavedCartState::versioned();
+        s.inner = Some(Box::new(self.base.save_state()));
+        s
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        if let Some(saved) = s.inner.as_ref() {
+            self.base.load_state(saved);
+        }
+    }
+    fn nvram_image(&self) -> Option<Vec<u8>> {
+        self.base.nvram_image()
+    }
+    fn load_nvram(&mut self, image: &[u8]) {
+        self.base.load_nvram(image);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        self.base.debug_regs()
+    }
     fn read_04xx(&mut self, addr: u16, bus: &mut dyn CartBus) -> u8 {
         self.base.read_04xx(addr, bus)
     }

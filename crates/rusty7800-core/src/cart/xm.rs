@@ -15,7 +15,7 @@
 //! [`CartBus`](super::CartBus); `pokey_bases()`/`ym_present()` reflect
 //! live control state.
 
-use super::{load_nvram, Cart, CartBus};
+use super::{load_nvram, Cart, CartBus, SavedCartState};
 
 /// XM control-register file (`m_cntrl1`–`m_cntrl5`).
 #[derive(Clone, Debug, Default)]
@@ -72,6 +72,50 @@ impl Xm {
 }
 
 impl Cart for Xm {
+    fn save_state(&self) -> SavedCartState {
+        let mut s = SavedCartState::versioned();
+        s.ctrl = vec![
+            self.ctrl.cntrl1,
+            self.ctrl.cntrl2,
+            self.ctrl.cntrl3,
+            self.ctrl.cntrl4,
+            self.ctrl.cntrl5,
+        ];
+        s.ram = self.ram.clone();
+        s.nvram = self.nvram.clone();
+        s.inner = self.inner.as_ref().map(|c| Box::new(c.save_state()));
+        s
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        if s.ctrl.len() == 5 {
+            self.ctrl.cntrl1 = s.ctrl[0];
+            self.ctrl.cntrl2 = s.ctrl[1];
+            self.ctrl.cntrl3 = s.ctrl[2];
+            self.ctrl.cntrl4 = s.ctrl[3];
+            self.ctrl.cntrl5 = s.ctrl[4];
+        }
+        s.apply_ram(&mut self.ram);
+        s.apply_nvram(&mut self.nvram);
+        if let (Some(inner), Some(saved)) = (self.inner.as_mut(), s.inner.as_ref()) {
+            inner.load_state(saved);
+        }
+    }
+    fn nvram_image(&self) -> Option<Vec<u8>> {
+        Some(self.nvram.clone())
+    }
+    fn load_nvram(&mut self, image: &[u8]) {
+        let n = image.len().min(self.nvram.len());
+        self.nvram[..n].copy_from_slice(&image[..n]);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![
+            ("cntrl1", self.ctrl.cntrl1 as i64),
+            ("cntrl2", self.ctrl.cntrl2 as i64),
+            ("cntrl3", self.ctrl.cntrl3 as i64),
+            ("cntrl4", self.ctrl.cntrl4 as i64),
+            ("cntrl5", self.ctrl.cntrl5 as i64),
+        ]
+    }
     fn read_40xx(&mut self, addr: u16, maria: bool, bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         if self.ctrl.cntrl5 & 1 == 0 {

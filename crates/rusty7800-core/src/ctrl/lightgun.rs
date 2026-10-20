@@ -10,7 +10,7 @@
 use crate::tia_io::TiaPort;
 
 /// Lightgun state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct LightGun {
     /// Trigger (bit 0x01, active-high).
     pub trigger: bool,

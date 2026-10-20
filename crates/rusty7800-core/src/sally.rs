@@ -32,7 +32,7 @@ const VEC_RESET: u16 = 0xFFFC;
 const VEC_IRQ: u16 = 0xFFFE;
 
 /// NMOS 6502 CPU state.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Sally {
     pub a: u8,
     pub x: u8,

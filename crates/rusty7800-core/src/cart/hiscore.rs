@@ -5,7 +5,7 @@
 //! (installed by `machine_start`); `04xx`/`40xx` fall through to the
 //! top-slot cart (`inner`).
 
-use super::{load_nvram, Cart, CartBus};
+use super::{load_nvram, Cart, CartBus, SavedCartState};
 
 /// High Score cart with an optional top-slot passthrough cart.
 pub struct Hiscore {
@@ -24,6 +24,25 @@ impl Hiscore {
 }
 
 impl Cart for Hiscore {
+    fn save_state(&self) -> SavedCartState {
+        let mut s = SavedCartState::versioned();
+        s.nvram = self.nvram.clone();
+        s.inner = self.inner.as_ref().map(|c| Box::new(c.save_state()));
+        s
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_nvram(&mut self.nvram);
+        if let (Some(inner), Some(saved)) = (self.inner.as_mut(), s.inner.as_ref()) {
+            inner.load_state(saved);
+        }
+    }
+    fn nvram_image(&self) -> Option<Vec<u8>> {
+        Some(self.nvram.clone())
+    }
+    fn load_nvram(&mut self, image: &[u8]) {
+        let n = image.len().min(self.nvram.len());
+        self.nvram[..n].copy_from_slice(&image[..n]);
+    }
     fn read_10xx(&mut self, addr: u16, _bus: &mut dyn CartBus) -> u8 {
         self.nvram[addr.wrapping_sub(0x1000) as usize]
     }

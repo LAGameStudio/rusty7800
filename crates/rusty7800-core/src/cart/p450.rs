@@ -8,7 +8,7 @@
 //! base. (`a78_p450_vb` = VersaBoard + POKEY lives in `cpuwiz.rs` +
 //! [`VersaPokey`] below.)
 
-use super::{Cart, CartBus};
+use super::{Cart, CartBus, SavedCartState};
 
 /// Mixin: POKEY@`$0450` window over any base cart.
 #[derive(Clone, Debug)]
@@ -23,6 +23,25 @@ impl<C> Pokey450<C> {
 }
 
 impl<C: Cart> Cart for Pokey450<C> {
+    fn save_state(&self) -> SavedCartState {
+        let mut s = SavedCartState::versioned();
+        s.inner = Some(Box::new(self.base.save_state()));
+        s
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        if let Some(saved) = s.inner.as_ref() {
+            self.base.load_state(saved);
+        }
+    }
+    fn nvram_image(&self) -> Option<Vec<u8>> {
+        self.base.nvram_image()
+    }
+    fn load_nvram(&mut self, image: &[u8]) {
+        self.base.load_nvram(image);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        self.base.debug_regs()
+    }
     fn read_04xx(&mut self, addr: u16, bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x0400);
         if (0x50..0x60).contains(&off) {
@@ -84,6 +103,19 @@ impl VersaPokey {
 }
 
 impl Cart for VersaPokey {
+    fn save_state(&self) -> SavedCartState {
+        let mut s = SavedCartState::versioned();
+        s.inner = Some(Box::new(self.base.save_state()));
+        s
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        if let Some(saved) = s.inner.as_ref() {
+            self.base.load_state(saved);
+        }
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        self.base.debug_regs()
+    }
     fn read_04xx(&mut self, addr: u16, bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x0400);
         if (0x50..0x60).contains(&off) {

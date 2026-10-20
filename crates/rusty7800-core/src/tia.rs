@@ -280,3 +280,77 @@ impl TiaAudio {
         }
     }
 }
+
+/// Save-state image: full channel + polynomial state. Poly tables are
+/// `Vec`s because `[u8; 511]` is beyond serde's fixed-array impls
+/// (they are deterministic from power-on, but mid-stream positions
+/// `p4/p5/p9` only resume exactly against identical tables).
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct TiaState {
+    pub audc: [u8; 2],
+    pub audf: [u8; 2],
+    pub audv: [i16; 2],
+    pub outvol: [i16; 2],
+    pub bit4: Vec<u8>,
+    pub bit5: Vec<u8>,
+    pub bit9: Vec<u8>,
+    pub p4: [u8; 2],
+    pub p5: [u8; 2],
+    pub p9: [u16; 2],
+    pub div_n_cnt: [u8; 2],
+    pub div_n_max: [u8; 2],
+    pub div_3_cnt: [u8; 2],
+    pub samp_n_max: u16,
+    pub samp_n_cnt: u16,
+    pub oversampling: bool,
+}
+
+impl TiaAudio {
+    /// Capture full audio state (exact resume, mid-frame safe).
+    pub fn save(&self) -> TiaState {
+        TiaState {
+            audc: self.audc,
+            audf: self.audf,
+            audv: self.audv,
+            outvol: self.outvol,
+            bit4: self.bit4.to_vec(),
+            bit5: self.bit5.to_vec(),
+            bit9: self.bit9.to_vec(),
+            p4: self.p4,
+            p5: self.p5,
+            p9: self.p9,
+            div_n_cnt: self.div_n_cnt,
+            div_n_max: self.div_n_max,
+            div_3_cnt: self.div_3_cnt,
+            samp_n_max: self.samp_n_max,
+            samp_n_cnt: self.samp_n_cnt,
+            oversampling: self.oversampling,
+        }
+    }
+
+    /// Restore full audio state; malformed tables are ignored.
+    pub fn load(&mut self, s: &TiaState) {
+        self.audc = s.audc;
+        self.audf = s.audf;
+        self.audv = s.audv;
+        self.outvol = s.outvol;
+        if s.bit4.len() == POLY4_SIZE {
+            self.bit4.copy_from_slice(&s.bit4);
+        }
+        if s.bit5.len() == POLY5_SIZE {
+            self.bit5.copy_from_slice(&s.bit5);
+        }
+        if s.bit9.len() == POLY9_SIZE {
+            self.bit9.copy_from_slice(&s.bit9);
+        }
+        self.p4 = s.p4;
+        self.p5 = s.p5;
+        self.p9 = s.p9;
+        self.div_n_cnt = s.div_n_cnt;
+        self.div_n_max = s.div_n_max;
+        self.div_3_cnt = s.div_3_cnt;
+        self.samp_n_max = s.samp_n_max;
+        self.samp_n_cnt = s.samp_n_cnt;
+        self.oversampling = s.oversampling;
+    }
+}

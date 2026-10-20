@@ -12,7 +12,7 @@
 //! that would otherwise live there is unreadable in that window. The
 //! `sg_pokey_visibility` test pins this outcome.
 
-use super::{bank_mask, base_rom, bidx, Cart, CartBus};
+use super::{bank_mask, base_rom, bidx, Cart, CartBus, SavedCartState};
 
 /// Shared ROM image + bank state (`m_rom`/`m_bank`/`m_bank_mask`).
 #[derive(Clone, Debug)]
@@ -118,6 +118,13 @@ impl MirrorRam {
 }
 
 impl Cart for MirrorRam {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, 0, &self.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        s.apply_ram(&mut self.ram);
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000);
         if off < 0x4000 {
@@ -153,6 +160,15 @@ impl SuperGame {
 }
 
 impl Cart for SuperGame {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
@@ -189,6 +205,15 @@ impl SuperGamePokey {
 }
 
 impl Cart for SuperGamePokey {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
@@ -232,6 +257,16 @@ impl SuperGameRam {
 }
 
 impl Cart for SuperGameRam {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, 0, &self.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        s.apply_ram(&mut self.ram);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
@@ -271,6 +306,15 @@ impl SuperGame9 {
 }
 
 impl Cart for SuperGame9 {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank, mask) = (&self.img.rom, self.img.bank as i64, self.img.mask as i64);
@@ -310,6 +354,15 @@ impl Absolute {
 }
 
 impl Cart for Absolute {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank) = (&self.img.rom, self.img.bank as i64);
@@ -349,6 +402,15 @@ impl Activision {
 }
 
 impl Cart for Activision {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, _maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let (rom, bank) = (&self.img.rom, self.img.bank as i64);

@@ -15,7 +15,7 @@
 use crate::tia_io::TiaPort;
 
 /// CX22 trakball state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Trakball {
     /// Fire button (bit 0x20, active-low).
     pub button: bool,

@@ -15,7 +15,7 @@ pub const AXIS_LOOKUP_X: [u8; 4] = [0x00, 0x02, 0x0A, 0x08];
 pub const AXIS_LOOKUP_Y: [u8; 4] = [0x00, 0x01, 0x05, 0x04];
 
 /// Amiga mouse state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct AmigaMouse {
     /// Left button (bit 0x40, active-low).
     pub btn_left: bool,

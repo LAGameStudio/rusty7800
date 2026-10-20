@@ -1,5 +1,10 @@
 [workspace]
-members = ["crates/rusty7800-core"]
+members = [
+  "crates/rusty7800-core",
+  "crates/rusty7800-agent-sock",
+  "crates/rusty7800-cli",
+  "crates/rusty7800-web",
+]
 resolver = "2"
 
 [workspace.package]

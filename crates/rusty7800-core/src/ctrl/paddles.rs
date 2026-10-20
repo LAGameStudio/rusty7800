@@ -11,7 +11,7 @@
 use crate::tia_io::TiaPort;
 
 /// Paddle pair state.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Paddles {
     /// Player-1 fire button (bit 0x08, active-low).
     pub btn1: bool,

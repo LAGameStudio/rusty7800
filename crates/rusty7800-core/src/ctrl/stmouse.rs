@@ -15,7 +15,7 @@ pub const AXIS_LOOKUP_X: [u8; 4] = [0x00, 0x02, 0x03, 0x01];
 pub const AXIS_LOOKUP_Y: [u8; 4] = [0x00, 0x08, 0x0C, 0x04];
 
 /// ST mouse state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct StMouse {
     /// Left button (bit 0x40, active-low).
     pub btn_left: bool,

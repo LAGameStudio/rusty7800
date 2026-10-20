@@ -3,7 +3,7 @@
 Atari 7800 emulator in Rust + Tauri 2 — a faithful port of **A7800 5.2**
 (a fork of the MAME Atari 7800 driver; sources in `../a7800-5.2/`).
 
-Full conversion + validation plan: `../a7800-rust-tauri-plan.md`.
+Full conversion + validation plan: `docs/a7800-rust-tauri-plan.md`.
 
 ## Layout (all work lives in this `newwork/` repo)
 

@@ -17,7 +17,7 @@ pub const KEY_SELECT: char = 'E';
 pub const KEY_PAUSE: char = 'O';
 
 /// Console buttons + difficulty switches (all released / `A` at power-on).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ConsoleState {
     /// Reset button held.
     pub reset: bool,

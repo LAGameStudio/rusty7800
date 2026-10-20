@@ -12,7 +12,7 @@
 //! 52K variants add the `30xx` (`$3000–$3FFF`) ROM window installed by
 //! `machine_start`.
 
-use super::{bank_mask, bidx, Cart, CartBus};
+use super::{bank_mask, bidx, Cart, CartBus, SavedCartState};
 
 /// Shared bankset image state.
 #[derive(Clone, Debug)]
@@ -135,6 +135,15 @@ impl BanksetSg {
 }
 
 impl Cart for BanksetSg {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank(self.img.bank)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let half = if maria { self.img.maria_half() as i64 } else { 0 };
@@ -182,6 +191,16 @@ impl BanksetSgBankram {
 }
 
 impl Cart for BanksetSgBankram {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, 0, &self.img.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        s.apply_ram(&mut self.img.ram);
+    }
+    fn debug_regs(&self) -> Vec<(&'static str, i64)> {
+        vec![("bank", self.img.bank as i64)]
+    }
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         let half = if maria { self.img.maria_half() as i64 } else { 0 };
@@ -235,6 +254,13 @@ impl BanksetBankram {
 }
 
 impl Cart for BanksetBankram {
+    fn save_state(&self) -> SavedCartState {
+        SavedCartState::with_bank_ram(self.img.bank, 0, &self.img.ram)
+    }
+    fn load_state(&mut self, s: &SavedCartState) {
+        s.apply_bank(&mut self.img.bank);
+        s.apply_ram(&mut self.img.ram);
+    }
     fn read_40xx(&mut self, addr: u16, maria: bool, _bus: &mut dyn CartBus) -> u8 {
         let off = addr.wrapping_sub(0x4000) as usize;
         if off < 0x4000 {

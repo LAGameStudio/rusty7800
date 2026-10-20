@@ -11,7 +11,7 @@
 use crate::tia_io::TiaPort;
 
 /// Proline joystick state (all inputs released at power-on).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct ProlineJoystick {
     pub up: bool,
     pub down: bool,

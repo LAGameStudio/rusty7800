@@ -44,7 +44,7 @@ pub struct BeamState {
 }
 
 /// Driver-side TIA I/O state (fields live in `a7800_state` in C++).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct TiaIo {
     /// INPTCTRL lock (set by bit 0 of a TIA write while unlocked).
     pub ctrl_lock: bool,

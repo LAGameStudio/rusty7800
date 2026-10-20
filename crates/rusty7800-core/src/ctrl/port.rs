@@ -36,7 +36,7 @@ pub const SLOT_NAMES: [&str; 9] = [
 pub const DEFAULT_SLOT: &str = "proline_joystick";
 
 /// A pluggable control-port device.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum PortDevice {
     Proline(ProlineJoystick),
     Vcs(VcsJoystick),
@@ -82,7 +82,7 @@ impl PortDevice {
 }
 
 /// A control port with a pluggable (or empty) device.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ControlPort {
     device: Option<PortDevice>,
 }

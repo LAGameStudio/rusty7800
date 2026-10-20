@@ -43,6 +43,10 @@ pub struct PixelOut {
 }
 
 /// MARIA state.
+///
+/// NOTE: serde is implemented manually at the bottom of this file:
+/// `LINE_W`-wide line RAM exceeds serde's fixed-array impls, so the
+/// image below mirrors every field with the buffers flattened.
 #[derive(Clone, Debug)]
 pub struct Maria {
     /// Color RAM: 32 pens (indices into the 256-entry system palette).
@@ -175,6 +179,14 @@ impl Maria {
 
     pub fn zone_offset(&self) -> u8 {
         self.offset
+    }
+
+    /// Blank the displayed (standby) line buffer: MAME draws blank
+    /// scanlines when DMA is off (`maria.cpp`), so the machine calls this
+    /// for raster lines outside the display window — vblank/overscan rows
+    /// read background instead of stale DMA output.
+    pub fn blank_displayed_line(&mut self) {
+        self.line_ram[1 - self.active_buffer] = [0; LINE_W];
     }
 
     /// The just-rendered working (active) line buffer (160 pens).
@@ -523,5 +535,104 @@ impl Maria {
         let nmi = self.nmi;
         self.nmi = false;
         (cycles, halt, nmi)
+    }
+}
+
+/// Save-state image: every field, with line RAM flattened (row-major,
+/// buffer 0 then buffer 1) because `[u8; 160]` is beyond serde's
+/// fixed-array impls.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct MariaState {
+    pub palette: Vec<u8>,
+    pub line_ram: Vec<u8>,
+    pub active_buffer: usize,
+    pub write_mode: bool,
+    pub dll: u16,
+    pub dl: u16,
+    pub holey: u8,
+    pub offset: u8,
+    pub vblank: u8,
+    pub dmaon: bool,
+    pub dpp: u16,
+    pub wsync: bool,
+    pub color_kill: bool,
+    pub cwidth: bool,
+    pub bcntl: bool,
+    pub kangaroo: bool,
+    pub rm: u8,
+    pub nmi: bool,
+    pub charbase: u16,
+    pub devmode_flag: bool,
+    pub devmode_dmacolor: u8,
+    pub devmode_dmacolorwidth: usize,
+    pub last_dma_cycles: i32,
+    pub limit_hit: bool,
+}
+
+impl Maria {
+    /// Capture full state (exact resume, mid-line safe).
+    pub fn save(&self) -> MariaState {
+        let mut line_ram = Vec::with_capacity(2 * LINE_W);
+        line_ram.extend_from_slice(&self.line_ram[0]);
+        line_ram.extend_from_slice(&self.line_ram[1]);
+        MariaState {
+            palette: self.palette.to_vec(),
+            line_ram,
+            active_buffer: self.active_buffer,
+            write_mode: self.write_mode,
+            dll: self.dll,
+            dl: self.dl,
+            holey: self.holey,
+            offset: self.offset,
+            vblank: self.vblank,
+            dmaon: self.dmaon,
+            dpp: self.dpp,
+            wsync: self.wsync,
+            color_kill: self.color_kill,
+            cwidth: self.cwidth,
+            bcntl: self.bcntl,
+            kangaroo: self.kangaroo,
+            rm: self.rm,
+            nmi: self.nmi,
+            charbase: self.charbase,
+            devmode_flag: self.devmode_flag,
+            devmode_dmacolor: self.devmode_dmacolor,
+            devmode_dmacolorwidth: self.devmode_dmacolorwidth,
+            last_dma_cycles: self.last_dma_cycles,
+            limit_hit: self.limit_hit,
+        }
+    }
+
+    /// Restore full state; malformed buffer lengths are ignored.
+    pub fn load(&mut self, s: &MariaState) {
+        if s.palette.len() == 32 {
+            self.palette.copy_from_slice(&s.palette);
+        }
+        if s.line_ram.len() == 2 * LINE_W {
+            self.line_ram[0].copy_from_slice(&s.line_ram[..LINE_W]);
+            self.line_ram[1].copy_from_slice(&s.line_ram[LINE_W..]);
+        }
+        self.active_buffer = s.active_buffer & 1;
+        self.write_mode = s.write_mode;
+        self.dll = s.dll;
+        self.dl = s.dl;
+        self.holey = s.holey;
+        self.offset = s.offset;
+        self.vblank = s.vblank;
+        self.dmaon = s.dmaon;
+        self.dpp = s.dpp;
+        self.wsync = s.wsync;
+        self.color_kill = s.color_kill;
+        self.cwidth = s.cwidth;
+        self.bcntl = s.bcntl;
+        self.kangaroo = s.kangaroo;
+        self.rm = s.rm;
+        self.nmi = s.nmi;
+        self.charbase = s.charbase;
+        self.devmode_flag = s.devmode_flag;
+        self.devmode_dmacolor = s.devmode_dmacolor;
+        self.devmode_dmacolorwidth = s.devmode_dmacolorwidth;
+        self.last_dma_cycles = s.last_dma_cycles;
+        self.limit_hit = s.limit_hit;
     }
 }

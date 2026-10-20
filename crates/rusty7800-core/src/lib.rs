@@ -19,6 +19,7 @@ pub mod bus;
 pub mod cart;
 pub mod ctrl;
 pub mod timing;
+pub mod machine;
 pub mod state;
 pub mod socket;
 
