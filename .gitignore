@@ -1,0 +1,6 @@
+/target/
+**/target/
+*.rom
+*.a78
+*.bin
+.DS_Store
