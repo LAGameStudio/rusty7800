@@ -13,8 +13,13 @@ use crate::specs::PADDLE_CYCLE_DIVISOR;
 use crate::tia::TiaAudio;
 
 /// Queries the driver makes of a control port (mirrors the C++ port API).
+/// Phase 4's `ctrl` devices implement this; `ControlPort` adds the
+/// empty-slot (`exists() == false` → `0xFF`) semantics from `ctrl.h`.
 pub trait TiaPort {
     fn joy_r(&self) -> u8;
+    /// Row/column select write (only the keypad implements it; the port
+    /// slot ignores writes when empty, per `ctrl.h`).
+    fn joy_w(&mut self, _data: u8) {}
     fn pot_x(&self) -> u8;
     fn pot_y(&self) -> u8;
     fn light_x(&self) -> u8;
