@@ -1,0 +1,13 @@
+[package]
+name = "rusty7800-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Rusty7800 headless runner — loads a ROM, steps frames, dumps a screenshot (builds the native exe)"
+
+[[bin]]
+name = "rusty7800-cli"
+path = "src/main.rs"
+
+[dependencies]
+rusty7800-core = { path = "../rusty7800-core" }

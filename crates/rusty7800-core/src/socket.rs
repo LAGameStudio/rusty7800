@@ -269,6 +269,25 @@ impl AgentSession {
             "state.nvram_image" => {
                 Ok(json!({"image": self.machine.nvram_image()}))
             }
+            "state.port_nvram" => {
+                let port = get_port(p)?;
+                Ok(json!({
+                    "device": slot_of(if port == 1 { &self.machine.port1 } else { &self.machine.port2 }),
+                    "image": self.machine.port_nvram_image(port),
+                }))
+            }
+            "input.load_port_nvram" => {
+                let port = get_port(p)?;
+                let image = get_bytes(p, "image")?;
+                Ok(json!({"ok": self.machine.load_port_nvram(port, &image)}))
+            }
+            "state.port_speech" => {
+                let port = get_port(p)?;
+                Ok(json!({
+                    "device": slot_of(if port == 1 { &self.machine.port1 } else { &self.machine.port2 }),
+                    "bytes": self.machine.take_port_speech(port),
+                }))
+            }
             "state.input" => Ok(json!({
                 "p1": {"device": slot_of(&self.machine.port1), "joy": self.machine.port1.joy_r()},
                 "p2": {"device": slot_of(&self.machine.port2), "joy": self.machine.port2.joy_r()},
@@ -428,6 +447,11 @@ fn apply_event(
             }
             _ => return Err(bad_control(control)),
         },
+        PortDevice::AtariVox(_) | PortDevice::SaveKey(_) => {
+            // Speech/EEPROM traffic arrives over the bus (SWCHA
+            // bit-banging), never as host input events.
+            return Err(bad_control(control));
+        }
         PortDevice::Keypad(d) => match control {
             "key" => {
                 let key = value

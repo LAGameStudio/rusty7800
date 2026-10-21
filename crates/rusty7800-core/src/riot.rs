@@ -165,6 +165,11 @@ impl Riot {
         self.update_pa7();
     }
 
+    /// Port A data-direction mask (drives console pin notification).
+    pub fn pa_ddr(&self) -> u8 {
+        self.pa_ddr
+    }
+
     /// Machine drives port B input lines (console buttons/difficulty).
     pub fn set_pb_in(&mut self, data: u8) {
         self.pb_in = data;

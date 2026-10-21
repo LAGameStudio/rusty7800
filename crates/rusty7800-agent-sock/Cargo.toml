@@ -1,0 +1,9 @@
+[package]
+name = "rusty7800-agent-sock"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Rusty7800 agent-socket protocol surface (plan Phase 8; transport binds in the app shell)"
+
+[dependencies]
+rusty7800-core = { path = "../rusty7800-core" }

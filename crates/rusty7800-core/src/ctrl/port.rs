@@ -10,6 +10,7 @@
 use crate::tia_io::TiaPort;
 
 use super::amigamouse::AmigaMouse;
+use super::atarivox::AtariVox;
 use super::keypad::Keypad;
 use super::lightgun::LightGun;
 use super::paddles::Paddles;
@@ -20,7 +21,7 @@ use super::vcs::VcsJoystick;
 use super::wheel::DrivingWheel;
 
 /// Slot names in `SLOT_INTERFACE` order (also mirrored in `specs.rs`).
-pub const SLOT_NAMES: [&str; 9] = [
+pub const SLOT_NAMES: [&str; 11] = [
     "proline_joystick",
     "vcs_joystick",
     "paddle",
@@ -30,6 +31,8 @@ pub const SLOT_NAMES: [&str; 9] = [
     "keypad",
     "amiga_mouse",
     "st_mouse",
+    "atarivox",
+    "savekey",
 ];
 
 /// Default device for both ports (machine config default slot).
@@ -47,6 +50,8 @@ pub enum PortDevice {
     Keypad(Keypad),
     AmigaMouse(AmigaMouse),
     StMouse(StMouse),
+    AtariVox(AtariVox),
+    SaveKey(AtariVox),
 }
 
 impl PortDevice {
@@ -62,6 +67,8 @@ impl PortDevice {
             "keypad" => Some(PortDevice::Keypad(Keypad::new())),
             "amiga_mouse" => Some(PortDevice::AmigaMouse(AmigaMouse::new())),
             "st_mouse" => Some(PortDevice::StMouse(StMouse::new())),
+            "atarivox" => Some(PortDevice::AtariVox(AtariVox::new())),
+            "savekey" => Some(PortDevice::SaveKey(AtariVox::savekey())),
             _ => None,
         }
     }
@@ -77,6 +84,8 @@ impl PortDevice {
             PortDevice::Keypad(_) => "keypad",
             PortDevice::AmigaMouse(_) => "amiga_mouse",
             PortDevice::StMouse(_) => "st_mouse",
+            PortDevice::AtariVox(_) => "atarivox",
+            PortDevice::SaveKey(_) => "savekey",
         }
     }
 }
@@ -130,6 +139,43 @@ impl ControlPort {
     pub fn device_mut(&mut self) -> Option<&mut PortDevice> {
         self.device.as_mut()
     }
+
+    /// Device-driven direction-pin levels for RIOT PA input bits
+    /// (empty slot floats to pull-up high).
+    pub fn pin_levels(&mut self, now: u64) -> u8 {
+        match &mut self.device {
+            Some(PortDevice::Proline(d)) => d.pin_levels(now),
+            Some(PortDevice::Vcs(d)) => d.pin_levels(now),
+            Some(PortDevice::Paddles(d)) => d.pin_levels(now),
+            Some(PortDevice::LightGun(d)) => d.pin_levels(now),
+            Some(PortDevice::Wheel(d)) => d.pin_levels(now),
+            Some(PortDevice::Trakball(d)) => d.pin_levels(now),
+            Some(PortDevice::Keypad(d)) => d.pin_levels(now),
+            Some(PortDevice::AmigaMouse(d)) => d.pin_levels(now),
+            Some(PortDevice::StMouse(d)) => d.pin_levels(now),
+            Some(PortDevice::AtariVox(d)) => d.pin_levels(now),
+            Some(PortDevice::SaveKey(d)) => d.pin_levels(now),
+            None => 0x0F,
+        }
+    }
+
+    /// Forward a console pin drive to the plugged device.
+    pub fn pin_write(&mut self, levels: u8, mask: u8, now: u64) {
+        match &mut self.device {
+            Some(PortDevice::Proline(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::Vcs(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::Paddles(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::LightGun(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::Wheel(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::Trakball(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::Keypad(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::AmigaMouse(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::StMouse(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::AtariVox(d)) => d.pin_write(levels, mask, now),
+            Some(PortDevice::SaveKey(d)) => d.pin_write(levels, mask, now),
+            None => {}
+        }
+    }
 }
 
 macro_rules! delegate {
@@ -144,6 +190,8 @@ macro_rules! delegate {
             Some(PortDevice::Keypad(d)) => d.$method(),
             Some(PortDevice::AmigaMouse(d)) => d.$method(),
             Some(PortDevice::StMouse(d)) => d.$method(),
+            Some(PortDevice::AtariVox(d)) => d.$method(),
+            Some(PortDevice::SaveKey(d)) => d.$method(),
             None => $empty,
         }
     };

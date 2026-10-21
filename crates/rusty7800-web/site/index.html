@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rusty7800 (web)</title>
+<style>
+  body { background: #111; color: #ddd; font-family: sans-serif; margin: 2em; }
+  canvas { image-rendering: pixelated; background: #000; }
+  #bar { margin-bottom: 1em; display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
+  #status { font-family: monospace; font-size: 0.85em; opacity: 0.8; }
+</style>
+</head>
+<body>
+<h1>Rusty7800 (web)</h1>
+<div id="bar">
+  <input type="file" id="rom" accept=".a78,.bin">
+  <select id="machine"></select>
+  <button id="run">Run</button>
+  <button id="pause">Pause</button>
+  <button id="step">Step 1f</button>
+  <button id="mute">Mute</button>
+  <label>Scale <input type="number" id="scale" value="2" min="1" max="4" style="width:3em"></label>
+  <span id="status">pick a ROM</span>
+</div>
+<canvas id="screen" width="320" height="263" tabindex="0"></canvas>
+<p id="help" style="font-size:0.85em;opacity:0.75;max-width:60em">
+P1: arrows + <kbd>Z</kbd>/<kbd>X</kbd> (A/B) &nbsp;·&nbsp;
+P2: <kbd>WASD</kbd> + <kbd>G</kbd>/<kbd>H</kbd> &nbsp;·&nbsp;
+Console: <kbd>T</kbd> reset <kbd>E</kbd> select <kbd>O</kbd> pause.
+Click the page first if keys don't respond (browser focus).
+</p>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

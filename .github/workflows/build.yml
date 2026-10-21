@@ -1,0 +1,86 @@
+# Build pipeline: native Windows exe + web version.
+#
+# - `windows-exe`: release builds of the headless CLI and the native GUI;
+#   uploads both exes.
+# - `web`: `wasm-pack build crates/rusty7800-web --target web`,
+#   then uploads the whole servable `site/` dir (index.html + app.js +
+#   generated `pkg/`). Serve it over plain HTTP — no npm needed.
+# - `checks`: fmt gate (scoped to the pipeline crates — the core tree has
+#   pre-existing rustfmt drift under active development; do NOT reformat it
+#   here), clippy `-D warnings`, and the full workspace test suite.
+#
+# Release flow: tag `v*` also attaches both artifacts to a GitHub release.
+
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt -p rusty7800-cli -p rusty7800-web -p rusty7800-gui -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  windows-exe:
+    needs: checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release -p rusty7800-cli -p rusty7800-gui
+      - run: ./target/release/rusty7800-cli.exe --help
+      - run: ./target/release/rusty7800-gui.exe --smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rusty7800-windows-x64
+          path: |
+            target/release/rusty7800-cli.exe
+            target/release/rusty7800-gui.exe
+
+  web:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+      - run: wasm-pack build crates/rusty7800-web --target web --out-dir site/pkg
+      - run: ls crates/rusty7800-web/site crates/rusty7800-web/site/pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rusty7800-web
+          path: crates/rusty7800-web/site
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows-exe, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - run: cd dist/rusty7800-web && zip -r ../rusty7800-web.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/rusty7800-windows-x64/rusty7800-cli.exe
+            dist/rusty7800-windows-x64/rusty7800-gui.exe
+            dist/rusty7800-web.zip

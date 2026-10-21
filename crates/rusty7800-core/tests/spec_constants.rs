@@ -34,8 +34,9 @@ fn address_map_ranges() {
 
 #[test]
 fn controller_slots_match_cpp() {
-    // ctrl.cpp SLOT_INTERFACE_START: 9 devices, proline default.
-    assert_eq!(specs::CONTROL_PORT_DEVICES.len(), 9);
+    // ctrl.cpp SLOT_INTERFACE_START: 9 devices, proline default, plus
+    // atarivox/savekey (new slots; no MAME originals, Stella-named).
+    assert_eq!(specs::CONTROL_PORT_DEVICES.len(), 11);
     assert_eq!(specs::DEFAULT_PORT_DEVICE, "proline_joystick");
     let names: HashSet<_> = specs::CONTROL_PORT_DEVICES.iter().map(|(n, _)| *n).collect();
     for expected in [
@@ -48,6 +49,8 @@ fn controller_slots_match_cpp() {
         "keypad",
         "amiga_mouse",
         "st_mouse",
+        "atarivox",
+        "savekey",
     ] {
         assert!(names.contains(expected), "missing port device {expected}");
     }

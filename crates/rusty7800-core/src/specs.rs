@@ -104,7 +104,10 @@ pub const MARIA_LINE_W: usize = 160;
 // Controllers (ctrl.cpp: SLOT_INTERFACE_START(a7800_control_port_devices))
 // ---------------------------------------------------------------------------
 /// (slot name, device) for both control ports; default = proline_joystick.
-pub const CONTROL_PORT_DEVICES: [(&str, &str); 9] = [
+/// Slots 1–9 mirror `SLOT_INTERFACE_START(a7800_control_port_devices)`;
+/// `atarivox`/`savekey` are new (no MAME slot exists) and follow Stella's
+/// controller-type naming.
+pub const CONTROL_PORT_DEVICES: [(&str, &str); 11] = [
     ("proline_joystick", "A7800_JOYSTICK_PROLINE"),
     ("vcs_joystick", "A7800_JOYSTICK"),
     ("paddle", "A7800_PADDLES"),
@@ -114,6 +117,8 @@ pub const CONTROL_PORT_DEVICES: [(&str, &str); 9] = [
     ("keypad", "A7800_KEYPAD"),
     ("amiga_mouse", "A7800_AMIGAMOUSE"),
     ("st_mouse", "A7800_STMOUSE"),
+    ("atarivox", "A7800_ATARIVOX"),
+    ("savekey", "A7800_SAVEKEY"),
 ];
 /// Default device for joy1/joy2 (MACHINE_CONFIG).
 pub const DEFAULT_PORT_DEVICE: &str = "proline_joystick";

@@ -20,6 +20,25 @@ pub trait TiaPort {
     /// Row/column select write (only the keypad implements it; the port
     /// slot ignores writes when empty, per `ctrl.h`).
     fn joy_w(&mut self, _data: u8) {}
+    /// Logic levels the device drives on the four direction pins (low
+    /// nibble: bit 0 pin 1 … bit 3 pin 4). Default derives them from
+    /// `joy_r` (released = pull-up high), which is exact for every
+    /// plain joystick/paddle/mouse device; bus-powered peripherals
+    /// (AtariVox/SaveKey) override this. The machine samples these for
+    /// RIOT PA input bits, so the RIOT DDR mask in `reg_read` decides
+    /// latch-vs-device per bit, exactly like hardware. `now` is the bus
+    /// CPU cycle count: `&mut` because time-varying lines (SpeakJet
+    /// READY/decoder) settle lazily on reads.
+    fn pin_levels(&mut self, _now: u64) -> u8 {
+        self.joy_r() & 0x0F
+    }
+    /// Console drives direction pins (RIOT SWCHA data/DDR write). `levels`
+    /// is the PA output latch nibble, `mask` the DDR nibble: bits set in
+    /// `mask` are driven to `levels`, the rest float to pull-up high.
+    /// Devices compare against their last call, so DDR-direction flips
+    /// surface as edges (I2C SDA release = STOP). `now` is the bus CPU
+    /// cycle count for baud timing. Default ignores the write.
+    fn pin_write(&mut self, _levels: u8, _mask: u8, _now: u64) {}
     fn pot_x(&self) -> u8;
     fn pot_y(&self) -> u8;
     fn light_x(&self) -> u8;

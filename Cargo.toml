@@ -4,6 +4,7 @@ members = [
   "crates/rusty7800-agent-sock",
   "crates/rusty7800-cli",
   "crates/rusty7800-web",
+  "crates/rusty7800-gui",
 ]
 resolver = "2"
 
