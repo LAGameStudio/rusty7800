@@ -65,6 +65,13 @@ pub struct Machine {
     overlays: Vec<Overlay>,
     slot_key: Option<&'static str>,
     pcb_id: Option<i32>,
+    /// TV region declared by the loaded `.a78` header (byte 57):
+    /// `Some(true)` = PAL, `Some(false)` = NTSC, `None` = headerless
+    /// image (no region claim). The shells surface a mismatch warning
+    /// when this disagrees with the machine: PAL-timed games re-init
+    /// every frame on a 263-line machine (verified: Fatal Run PAL sits
+    /// at its boot loop on `a7800`, runs on `a7800p`).
+    rom_tv_pal: Option<bool>,
     vpos: u16,
     lines: u16,
     is_pal: bool,
@@ -119,6 +126,7 @@ impl Machine {
             dma_accum: Vec::new(),
             dma_frame: Vec::new(),
             pcb_id: None,
+            rom_tv_pal: None,
         }
     }
 
@@ -133,10 +141,11 @@ impl Machine {
     /// Install a loaded image (header or headerless); overlays follow the
     /// `machine_start` switch via `cart::overlays_for_type`.
     pub fn load_cart(&mut self, loaded: LoadedCart) {
-        let LoadedCart { cart, pcb_id, slot_key, .. } = loaded;
+        let LoadedCart { cart, pcb_id, slot_key, header, .. } = loaded;
         self.overlays = cart::overlays_for_type(pcb_id);
         self.slot_key = Some(slot_key);
         self.pcb_id = Some(pcb_id);
+        self.rom_tv_pal = header.map(|h| h.is_pal);
         self.cart = Some(cart);
     }
 
@@ -152,6 +161,21 @@ impl Machine {
 
     pub fn slot_key(&self) -> Option<&'static str> {
         self.slot_key
+    }
+
+    /// TV region declared by the loaded ROM header (`None` = headerless,
+    /// no claim). Compare against `machine_id().spec().is_pal` to
+    /// detect a region mismatch.
+    pub fn rom_is_pal(&self) -> Option<bool> {
+        self.rom_tv_pal
+    }
+
+    /// True when the loaded ROM declares a TV region and it disagrees
+    /// with the machine (PAL game on a 263-line machine or vice versa).
+    /// Mismatched games misbehave badly (Fatal Run PAL re-runs its boot
+    /// loop forever on `a7800`); the shells warn instead of guessing.
+    pub fn region_mismatch(&self) -> bool {
+        matches!(self.rom_tv_pal, Some(pal) if pal != self.is_pal)
     }
 
     /// Silent-boot mute: the audio backend mutes unless a cart or BIOS is

@@ -132,6 +132,20 @@ impl Emu {
         self.machine.muted()
     }
 
+    /// TV region declared by the loaded ROM header (`undefined` for
+    /// headerless images, which claim no region). The page warns when
+    /// this disagrees with the machine: PAL-timed games hang on a
+    /// 263-line machine and vice versa.
+    pub fn rom_is_pal(&self) -> Option<bool> {
+        self.machine.rom_is_pal()
+    }
+
+    /// True when the loaded ROM declares a TV region and it disagrees
+    /// with this session's machine.
+    pub fn region_mismatch(&self) -> bool {
+        self.machine.region_mismatch()
+    }
+
     /// Drain one frame's mono `i16` samples (surfaced as `Int16Array`).
     /// Call once per `step_frames` batch or samples accumulate.
     pub fn take_audio(&mut self) -> Vec<i16> {
@@ -214,6 +228,23 @@ pub fn machine_list() -> Vec<String> {
         .collect()
 }
 
+/// Friendly labels parallel to [`machine_list`] (MAME `full_name`:
+/// `Atari 7800 (PAL) Warm`, …) so the picker shows the region.
+#[wasm_bindgen]
+pub fn machine_labels() -> Vec<String> {
+    MachineId::all()
+        .iter()
+        .map(|m| m.spec().full_name.to_string())
+        .collect()
+}
+
+/// Machine region by driver name (`undefined` for unknown names).
+/// Lets the page name the mismatch without hardcoding regions.
+#[wasm_bindgen]
+pub fn machine_is_pal(name: &str) -> Option<bool> {
+    lookup_machine(name).map(|m| m.spec().is_pal)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,6 +273,14 @@ mod tests {
         assert!(!e.rgba_ptr().is_null());
         assert!(machine_list().contains(&"a7800p".to_string()));
         assert!(lookup_machine("bogus").is_none());
+        assert_eq!(machine_list().len(), machine_labels().len());
+        assert!(machine_labels().iter().any(|l| l.contains("(PAL)")));
+        assert_eq!(machine_is_pal("a7800p"), Some(true));
+        assert_eq!(machine_is_pal("a7800"), Some(false));
+        assert_eq!(machine_is_pal("bogus"), None);
+        // Headerless image claims no region; headers report theirs.
+        assert_eq!(e.rom_is_pal(), None);
+        assert!(!e.region_mismatch());
         assert_eq!(lookup_machine("a7800p"), Some(MachineId::Pal));
         // Input plumbing: Proline idle byte is 0xAF; pressing up clears bit 0.
         assert_eq!(e.joy_p1(), 0xAF);

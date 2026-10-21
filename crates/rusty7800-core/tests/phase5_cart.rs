@@ -13,7 +13,10 @@ use rusty7800_core::cart::p800::Pokey800;
 use rusty7800_core::cart::pcb;
 use rusty7800_core::cart::rom::{Absolute, Activision, Flat, FlatPokey, MirrorRam, SuperGame, SuperGame9, SuperGamePokey, SuperGameRam};
 use rusty7800_core::cart::xm::Xm;
-use rusty7800_core::cart::{bank_mask, load_nvram, overlays_for_type, save_nvram, slot_key_for_type, Cart, CartBus, NullBus};
+use rusty7800_core::cart::{
+    bank_mask, load_image, load_nvram, overlays_for_type, save_nvram, slot_key_for_type, Cart,
+    CartBus, NullBus,
+};
 
 /// ROM image with each 16K bank filled with its index.
 fn marker_banks(nbanks: usize) -> Vec<u8> {
@@ -504,4 +507,44 @@ fn machine_start_overlays() {
     let p800 = overlays_for_type(pcb::BANKSET_BANKRAM_POK800);
     assert_eq!((p800[0].start, p800[0].end, p800[0].window), (0x0800, 0x0FFF, 0x08));
     assert_eq!(overlays_for_type(pcb::XM_BOARD).len(), 3);
+}
+
+// ---- ROM TV region plumbing ---------------------------------------------------
+
+/// 4K flat `.a78` with the TV byte set (`is_pal`): header byte 57.
+fn tv_rom(is_pal: bool) -> Vec<u8> {
+    let mut head = synth_header(0x0000, 0x1000);
+    head[57] = is_pal as u8;
+    let mut file = head.to_vec();
+    file.extend(vec![0xFFu8; 0x1000]);
+    file
+}
+
+#[test]
+fn rom_tv_region_and_mismatch() {
+    use rusty7800_core::machine::Machine;
+    use rusty7800_core::timing::MachineId;
+    // Fresh machine: no ROM, no region claim.
+    let mut ntsc = Machine::new(MachineId::Ntsc);
+    assert_eq!(ntsc.rom_is_pal(), None);
+    assert!(!ntsc.region_mismatch());
+    // NTSC header on NTSC machine: no mismatch.
+    ntsc.load_cart(load_image(&tv_rom(false)).expect("ntsc header loads"));
+    assert_eq!(ntsc.rom_is_pal(), Some(false));
+    assert!(!ntsc.region_mismatch());
+    // PAL header on NTSC machine: mismatch (Fatal Run PAL hangs here).
+    let mut pal_cart_ntsc = Machine::new(MachineId::Ntsc);
+    pal_cart_ntsc.load_cart(load_image(&tv_rom(true)).expect("pal header loads"));
+    assert_eq!(pal_cart_ntsc.rom_is_pal(), Some(true));
+    assert!(pal_cart_ntsc.region_mismatch());
+    // PAL header on PAL machine: match.
+    let mut pal = Machine::new(MachineId::Pal);
+    pal.load_cart(load_image(&tv_rom(true)).expect("pal header loads"));
+    assert_eq!(pal.rom_is_pal(), Some(true));
+    assert!(!pal.region_mismatch());
+    // Headerless image: no claim, never a mismatch.
+    let mut bare = Machine::new(MachineId::Pal);
+    bare.load_cart(load_image(&vec![0xFFu8; 0x1000]).expect("flat loads"));
+    assert_eq!(bare.rom_is_pal(), None);
+    assert!(!bare.region_mismatch());
 }

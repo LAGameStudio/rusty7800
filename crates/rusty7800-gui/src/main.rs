@@ -23,6 +23,31 @@ fn driver_names() -> Vec<&'static str> {
     MachineId::all().iter().map(|m| m.driver_name()).collect()
 }
 
+/// Picker entries: `(driver name, friendly label)` — the label is the
+/// MAME `full_name` (`Atari 7800 (PAL) Warm`, …) so the region is
+/// visible before a ROM is even loaded.
+fn machine_entries() -> Vec<(&'static str, &'static str)> {
+    MachineId::all().iter().map(|m| (m.driver_name(), m.spec().full_name)).collect()
+}
+
+fn machine_label(name: &str) -> &'static str {
+    MachineId::all()
+        .iter()
+        .find(|m| m.driver_name() == name)
+        .map(|m| m.spec().full_name)
+        .unwrap_or("unknown machine")
+}
+
+/// First driver whose region matches a ROM region claim (`a7800` for
+/// NTSC, `a7800p` for PAL) — points the mismatch warning at a fix.
+fn driver_for_region(is_pal: bool) -> &'static str {
+    MachineId::all()
+        .iter()
+        .find(|m| m.spec().is_pal == is_pal)
+        .map(|m| m.driver_name())
+        .unwrap_or("a7800")
+}
+
 fn machine_id(name: &str) -> MachineId {
     MachineId::all()
         .into_iter()
@@ -228,11 +253,11 @@ impl eframe::App for App {
                     self.frames = 0;
                 }
                 egui::ComboBox::from_label("Machine")
-                    .selected_text(&self.machine_name)
+                    .selected_text(machine_label(&self.machine_name))
                     .show_ui(ui, |ui| {
-                        for name in driver_names() {
+                        for (driver, label) in machine_entries() {
                             if ui
-                                .selectable_value(&mut self.machine_name, name.to_string(), name)
+                                .selectable_value(&mut self.machine_name, driver.to_string(), label)
                                 .clicked()
                             {
                                 let rom = self.rom_bytes.clone();
@@ -272,6 +297,30 @@ impl eframe::App for App {
                     self.machine.slot_key().unwrap_or("none"),
                 ));
                 ui.monospace(&self.audio_note);
+                // ROM TV region vs machine region: PAL-timed games hang
+                // on a 263-line machine (and vice versa), so a mismatch
+                // gets a loud pointer at the right machine.
+                match self.machine.rom_is_pal() {
+                    Some(is_pal) => {
+                        ui.monospace(if is_pal { "ROM: PAL" } else { "ROM: NTSC" });
+                        if self.machine.region_mismatch() {
+                            ui.colored_label(
+                                egui::Color32::RED,
+                                format!(
+                                    "REGION MISMATCH — {} ROM on {} machine (try {})",
+                                    if is_pal { "PAL" } else { "NTSC" },
+                                    if is_pal { "NTSC" } else { "PAL" },
+                                    driver_for_region(is_pal),
+                                ),
+                            );
+                        }
+                    }
+                    None => {
+                        if self.machine.has_cart() {
+                            ui.monospace("ROM: region unknown");
+                        }
+                    }
+                }
                 if !self.status.is_empty() {
                     ui.colored_label(egui::Color32::RED, &self.status);
                 }

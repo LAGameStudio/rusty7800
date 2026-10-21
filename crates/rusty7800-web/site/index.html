@@ -9,6 +9,7 @@
   canvas { image-rendering: pixelated; background: #000; }
   #bar { margin-bottom: 1em; display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
   #status { font-family: monospace; font-size: 0.85em; opacity: 0.8; }
+  #tvwarn { font-family: monospace; font-size: 0.85em; color: #f66; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -22,6 +23,7 @@
   <button id="mute">Mute</button>
   <label>Scale <input type="number" id="scale" value="2" min="1" max="4" style="width:3em"></label>
   <span id="status">pick a ROM</span>
+  <span id="tvwarn"></span>
 </div>
 <canvas id="screen" width="320" height="263" tabindex="0"></canvas>
 <p id="help" style="font-size:0.85em;opacity:0.75;max-width:60em">
