@@ -180,14 +180,14 @@ pub struct MachineVariant {
 
 /// All 8 machine variants in CONS order.
 pub const MACHINES: [MachineVariant; 8] = [
-    MachineVariant { name: "a7800",    full_name: "Atari 7800 (NTSC) Warm",           is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800_palette" },
-    MachineVariant { name: "a7800u1",  full_name: "Atari 7800 (NTSC) Cool",           is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800u1_palette" },
-    MachineVariant { name: "a7800u2",  full_name: "Atari 7800 (NTSC) Hot",            is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800u2_palette" },
-    MachineVariant { name: "a7800dev", full_name: "Atari 7800 (NTSC) Developer Mode", is_pal: false, lines: 263, devmode: true,  palette_cpp: "a7800_palette" },
-    MachineVariant { name: "a7800p",   full_name: "Atari 7800 (PAL) Warm",            is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800p_palette" },
-    MachineVariant { name: "a7800pu1", full_name: "Atari 7800 (PAL) Cool",            is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800pu1_palette" },
-    MachineVariant { name: "a7800pu2", full_name: "Atari 7800 (PAL) Hot",             is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800pu2_palette" },
-    MachineVariant { name: "a7800pdev", full_name: "Atari 7800 (PAL) Developer Mode", is_pal: true,  lines: 313, devmode: true,  palette_cpp: "a7800p_palette" },
+    MachineVariant { name: "a7800",    full_name: "Atari 7800 NTSC Warm",           is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800_palette" },
+    MachineVariant { name: "a7800u1",  full_name: "Atari 7800 NTSC Cool",           is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800u1_palette" },
+    MachineVariant { name: "a7800u2",  full_name: "Atari 7800 NTSC Hot",            is_pal: false, lines: 263, devmode: false, palette_cpp: "a7800u2_palette" },
+    MachineVariant { name: "a7800dev", full_name: "Atari 7800 NTSC Developer Mode", is_pal: false, lines: 263, devmode: true,  palette_cpp: "a7800_palette" },
+    MachineVariant { name: "a7800p",   full_name: "Atari 7800 PAL Warm",            is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800p_palette" },
+    MachineVariant { name: "a7800pu1", full_name: "Atari 7800 PAL Cool",            is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800pu1_palette" },
+    MachineVariant { name: "a7800pu2", full_name: "Atari 7800 PAL Hot",             is_pal: true,  lines: 313, devmode: false, palette_cpp: "a7800pu2_palette" },
+    MachineVariant { name: "a7800pdev", full_name: "Atari 7800 PAL Developer Mode", is_pal: true,  lines: 313, devmode: true,  palette_cpp: "a7800p_palette" },
 ];
 
 // ---------------------------------------------------------------------------

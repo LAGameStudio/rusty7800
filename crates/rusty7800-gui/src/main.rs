@@ -24,7 +24,7 @@ fn driver_names() -> Vec<&'static str> {
 }
 
 /// Picker entries: `(driver name, friendly label)` — the label is the
-/// MAME `full_name` (`Atari 7800 (PAL) Warm`, …) so the region is
+/// original A7800 `full_name` (`Atari 7800 PAL Warm`, …) so the region is
 /// visible before a ROM is even loaded.
 fn machine_entries() -> Vec<(&'static str, &'static str)> {
     MachineId::all().iter().map(|m| (m.driver_name(), m.spec().full_name)).collect()

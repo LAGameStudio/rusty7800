@@ -228,8 +228,8 @@ pub fn machine_list() -> Vec<String> {
         .collect()
 }
 
-/// Friendly labels parallel to [`machine_list`] (MAME `full_name`:
-/// `Atari 7800 (PAL) Warm`, …) so the picker shows the region.
+/// Friendly labels parallel to [`machine_list`] (original A7800 `full_name`:
+/// `Atari 7800 PAL Warm`, …) so the picker shows the region.
 #[wasm_bindgen]
 pub fn machine_labels() -> Vec<String> {
     MachineId::all()
@@ -274,7 +274,7 @@ mod tests {
         assert!(machine_list().contains(&"a7800p".to_string()));
         assert!(lookup_machine("bogus").is_none());
         assert_eq!(machine_list().len(), machine_labels().len());
-        assert!(machine_labels().iter().any(|l| l.contains("(PAL)")));
+        assert!(machine_labels().iter().any(|l| l.contains("PAL")));
         assert_eq!(machine_is_pal("a7800p"), Some(true));
         assert_eq!(machine_is_pal("a7800"), Some(false));
         assert_eq!(machine_is_pal("bogus"), None);
