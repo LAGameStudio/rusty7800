@@ -13,3 +13,6 @@ path = "src/main.rs"
 rusty7800-core = { path = "../rusty7800-core" }
 eframe = "0.37"
 cpal = "0.18"
+
+[build-dependencies]
+winres = "0.1"

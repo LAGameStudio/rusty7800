@@ -389,10 +389,22 @@ fn main() -> eframe::Result<()> {
         std::process::exit(2);
     }
     let machine_name_owned = machine_name;
+    // Window/taskbar icon: Fuji-inspired mark, baked in at compile time
+    // (regenerate with `python3 scripts/make_icon.py`).
+    let viewport = egui::ViewportBuilder::default().with_inner_size([700.0, 640.0]);
+    let viewport = match eframe::icon_data::from_png_bytes(
+        &include_bytes!("../assets/icon-256.png")[..],
+    ) {
+        Ok(icon) => viewport.with_icon(icon),
+        Err(e) => {
+            eprintln!("icon-256.png did not decode ({e}); running without a window icon");
+            viewport
+        }
+    };
     eframe::run_native(
         "Rusty7800",
         eframe::NativeOptions {
-            viewport: egui::ViewportBuilder::default().with_inner_size([700.0, 640.0]),
+            viewport,
             ..Default::default()
         },
         Box::new(|cc| Ok(Box::new(App::new(cc, rom, machine_name_owned)) as Box<dyn eframe::App>)),
@@ -402,4 +414,26 @@ fn main() -> eframe::Result<()> {
 fn usage_and_exit() -> String {
     eprintln!("usage: rusty7800-gui [--rom file.a78] [--machine drv] [--smoke]");
     std::process::exit(2);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The GUI picker must show exactly the labels the web picker shows:
+    /// one `(driver name, spec full_name)` entry per `MachineId`, in
+    /// `MachineId::all()` order (the web `machine_list`/`machine_labels`
+    /// pair reads the same source). Catches the pickers drifting apart.
+    #[test]
+    fn picker_labels_match_web_labels() {
+        let entries = machine_entries();
+        let all = MachineId::all();
+        assert_eq!(entries.len(), all.len(), "one picker entry per machine");
+        for (id, (driver, label)) in all.iter().zip(entries.iter()) {
+            assert_eq!(*driver, id.driver_name());
+            assert_eq!(*label, id.spec().full_name);
+            assert_eq!(machine_label(driver), id.spec().full_name);
+            assert!(!label.is_empty() && *label != *driver);
+        }
+    }
 }
