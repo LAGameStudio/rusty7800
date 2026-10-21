@@ -5,8 +5,9 @@
 cannot run from `file://`: browsers block ES-module scripts and the
 `fetch()` of the `.wasm` on the null origin (CORS). This script inlines
 everything — glue JS as a classic script, the wasm as base64 decoded at
-boot and passed straight to the initializer (no `fetch`, no modules, no
-network at all) — into `site/rusty7800-standalone.html`, which runs from
+boot and passed straight to the initializer, the app icon as a data-URI
+favicon (no `fetch`, no modules, no network at all) — into
+`site/rusty7800-standalone.html`, which runs from
 disk, from any static host, and with any (or no) wasm MIME type::
 
     python3 site/bundle.py           # rebuild after wasm-pack
@@ -20,12 +21,14 @@ import base64
 import os
 import re
 import sys
+from urllib.parse import quote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GLUE = os.path.join(HERE, "pkg", "rusty7800_web.js")
 WASM = os.path.join(HERE, "pkg", "rusty7800_web_bg.wasm")
 APP = os.path.join(HERE, "app.js")
 INDEX = os.path.join(HERE, "index.html")
+ICON = os.path.join(HERE, "icon.svg")
 OUT = os.path.join(HERE, "rusty7800-standalone.html")
 
 
@@ -100,12 +103,27 @@ def adapt_app(app: str) -> str:
     return text
 
 
+def favicon_link() -> str:
+    """App icon as a data-URI `<link>` so the standalone needs no files.
+
+    `site/index.html` points at `./icon.svg` (served alongside it); the
+    standalone is a single relocatable file, so the same SVG is inlined
+    here. Percent-encoding keeps `#` (the tile gradient stop) from
+    reading as a fragment delimiter.
+    """
+    return (
+        '<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,'
+        + quote(load(ICON), safe="") + '">'
+    )
+
+
 def build() -> str:
     glue = de_modularize(load(GLUE))
     app = adapt_app(load(APP))
     with open(WASM, "rb") as f:
         b64 = base64.b64encode(f.read()).decode("ascii")
     index = load(INDEX)
+    favicon = favicon_link()
     css = re.search(r"<style>(.*?)</style>", index, re.S).group(1)
     body = re.search(r"<body>(.*?)<script", index, re.S).group(1)
     return f"""<!doctype html>
@@ -115,6 +133,7 @@ def build() -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{favicon}
 <title>Rusty7800 (web, standalone)</title>
 <style>{css}</style>
 </head>
@@ -145,7 +164,7 @@ def main() -> None:
     ap.add_argument("--check", action="store_true",
                     help="fail if the checked-in bundle is stale")
     args = ap.parse_args()
-    for p in (GLUE, WASM, APP, INDEX):
+    for p in (GLUE, WASM, APP, INDEX, ICON):
         if not os.path.exists(p):
             raise SystemExit(f"bundle: missing {p} (run wasm-pack first?)")
     # app.js boots with bare init(): point it at the embedded bytes via

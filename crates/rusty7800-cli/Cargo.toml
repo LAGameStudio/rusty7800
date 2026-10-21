@@ -11,3 +11,6 @@ path = "src/main.rs"
 
 [dependencies]
 rusty7800-core = { path = "../rusty7800-core" }
+
+[build-dependencies]
+winres = "0.1"
