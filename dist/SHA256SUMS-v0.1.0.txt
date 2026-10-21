@@ -1,0 +1,2 @@
+b0280431750c0ab75fefacba3b64b6e43ec099a594cfa33739ba4a821f826616 *dist/rusty7800-cli-0.1.0-windows-x86_64.zip
+b031f449468e70e8cdf0cec7a646e27242a5023b00ed0955a31daf9f4016c68f *dist/rusty7800-gui-0.1.0-windows-x86_64.zip
